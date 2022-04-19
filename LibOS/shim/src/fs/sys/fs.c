@@ -42,7 +42,7 @@ int sys_print_as_ranges(char* buf, size_t buf_size, size_t count,
     }
     if (buf_pos + 2 > buf_size)
         return -EOVERFLOW;
-    buf[buf_pos] =   '\n';
+    buf[buf_pos]   = '\n';
     buf[buf_pos+1] = '\0';
     return 0;
 }
@@ -60,11 +60,13 @@ int sys_print_as_bitmask(char* buf, size_t buf_size, size_t count,
                 && is_present(pos, callback_arg))
             word |= (1 << pos % 32);
         if (pos % 32 == 0) {
-            if (count <= 32) // Linux sysfs quirk in small bitmasks case
+            if (count <= 32) {
+                /* Linux sysfs quirk: small bitmasks are printed without leading zeroes. */
                 ret = snprintf(buf, buf_size, "%x\n", word); // pos == 0, loop exits afterwards
-            else
+            } else {
                 ret = snprintf(buf + buf_pos, buf_size - buf_pos,
                                "%08x%c", word, pos != 0 ? ',' : '\n');
+            }
             if (ret < 0)
                 return ret;
             if ((size_t)ret >= buf_size - buf_pos)
@@ -91,20 +93,18 @@ static int sys_resource_info(const char* parent_name, size_t* out_total, const c
         *out_prefix = "cpu";
         return 0;
     } else if (strcmp(parent_name, "cache") == 0) {
-        bool found = false;
-        size_t total = 0;
+        size_t max = 0;
         /* Find the largest cache index used. */
         for (size_t i = 0; i < ti->threads_cnt; i++) {
             if (ti->threads[i].is_online) {
                 for (size_t j = 0; j < MAX_CACHES; j++) {
                     if (ti->threads[i].caches_ids[j] != (size_t)-1) {
-                        total = MAX(total, j);
-                        found = true;
+                        max = MAX(max, j + 1); // +1 to convert max index to elements count
                     }
                 }
             }
         }
-        *out_total = found ? total + 1 : 0; // +1 to convert max index to elements count
+        *out_total = max;
         *out_prefix = "index";
         return 0;
     } else {

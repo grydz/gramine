@@ -142,9 +142,10 @@ int proc_cpuinfo_load(struct shim_dentry* dent, char** out_data, size_t* out_siz
     const struct pal_cpu_info* ci = &g_pal_public_state->cpu_info;
     for (size_t i = 0; i < ti->threads_cnt; i++) {
         struct pal_cpu_thread_info* thread = &ti->threads[i];
-        if (!thread->is_online)
+        if (!thread->is_online) {
             /* Offline cores are skipped in cpuinfo, with gaps in numbering. */
             continue;
+        }
         struct pal_cpu_core_info* core = &ti->cores[thread->core_id];
         /* Below strings must match exactly the strings retrieved from /proc/cpuinfo
          * (see Linux's arch/x86/kernel/cpu/proc.c) */
@@ -156,8 +157,8 @@ int proc_cpuinfo_load(struct shim_dentry* dent, char** out_data, size_t* out_siz
         ADD_INFO("stepping\t: %lu\n",    ci->cpu_stepping);
         ADD_INFO("physical id\t: %zu\n", core->socket_id);
 
-        /* Linux keeps this numbering cpu-local, but we can use a different one, and it's documented
-         * as "hardware platform's identifier (rather than the kernel's)" anyways. */
+        /* Linux keeps this numbering socket-local, but we can use a different one, and it's
+         * documented as "hardware platform's identifier (rather than the kernel's)" anyways. */
         ADD_INFO("core id\t\t: %lu\n",   thread->core_id);
 
         size_t cores_in_socket = 0;

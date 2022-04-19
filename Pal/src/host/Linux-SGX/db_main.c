@@ -137,9 +137,10 @@ static int sanitize_topo_info(struct pal_topo_info* topo_info) {
             return -1;
     }
 
-    if (topo_info->threads_cnt == 0 || !topo_info->threads[0].is_online)
+    if (topo_info->threads_cnt == 0 || !topo_info->threads[0].is_online) {
         // Linux requires this
         return -1;
+    }
 
     for (size_t i = 0; i < topo_info->threads_cnt; i++) {
         struct pal_cpu_thread_info* thread = &topo_info->threads[i];
@@ -175,9 +176,10 @@ static int sanitize_topo_info(struct pal_topo_info* topo_info) {
             return -1;
     }
 
-    if (!topo_info->numa_nodes[0].is_online)
+    if (!topo_info->numa_nodes[0].is_online) {
         // Linux requires this
         return -1;
+    }
 
     for (size_t i = 0; i < topo_info->numa_nodes_cnt; i++) {
         struct pal_numa_node_info* node = &topo_info->numa_nodes[i];
@@ -197,7 +199,8 @@ static int sanitize_topo_info(struct pal_topo_info* topo_info) {
     }
 
     for (size_t i = 0; i < topo_info->numa_nodes_cnt; i++) {
-        // Note: Linux doesn't guarantee that distance i -> i is 0, so we aren't checking this.
+        /* Note: Linux doesn't guarantee that distance i -> i is 0, so we aren't checking this (it's
+         * actually non-zero on all machines we have). */
         for (size_t j = 0; j < topo_info->numa_nodes_cnt; j++) {
             if (   topo_info->numa_distance_matrix[i*topo_info->numa_nodes_cnt + j]
                 != topo_info->numa_distance_matrix[j*topo_info->numa_nodes_cnt + i])
@@ -559,7 +562,7 @@ noreturn void pal_linux_main(char* uptr_libpal_uri, size_t libpal_uri_len, char*
     g_pal_common_state.raw_manifest_data = manifest_addr;
     g_pal_public_state.manifest_root = manifest_root;
 
-    /* parse and store host topology info into g_pal_linuxsgx_state struct */
+    /* parse and store host topology info into g_pal_public_state struct */
     ret = import_and_sanitize_topo_info(uptr_topo_info);
     if (ret < 0) {
         log_error("Failed to copy and sanitize topology information");

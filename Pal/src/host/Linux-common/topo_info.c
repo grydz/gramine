@@ -45,6 +45,8 @@ static int get_hw_resource_value(const char* filename, size_t* out_value) {
     return 0;
 }
 
+/* Read a space-separated list of numbers.
+ * The file has to contain at least `count` numbers, otherwise this function returns `-EINVAL`. */
 static int read_numbers_from_file(const char* path, size_t* out_arr, size_t count) {
     char buf[PAL_SYSFS_BUF_FILESZ];
     int ret = read_file_buffer(path, buf, sizeof(buf) - 1);
@@ -395,9 +397,10 @@ int get_topology_info(struct pal_topo_info* topo_info) {
                     .cache_ind = j,
                     .id_to_set = caches_cnt,
                 });
-                if (ret == -ENOENT)
+                if (ret == -ENOENT) {
                     // No more caches.
                     break;
+                }
                 if (ret < 0)
                     goto fail;
                 ret = read_cache_info(&caches[caches_cnt], i, j);
@@ -407,8 +410,8 @@ int get_topology_info(struct pal_topo_info* topo_info) {
             }
         }
     }
-    /* TODO: Add realloc to save memory after we know the final sizes of all the buffers (after we
-     * implement realloc()). */
+    /* Note: We could add realloc here to save memory after we know the final sizes of all the
+     * buffers (after we implement realloc()). But the savings would rather be negligible. */
 
     topo_info->caches_cnt     = caches_cnt;
     topo_info->threads_cnt    = threads_cnt;

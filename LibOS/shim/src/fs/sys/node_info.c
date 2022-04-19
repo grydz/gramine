@@ -14,9 +14,9 @@
 #include "shim_fs.h"
 #include "shim_fs_pseudo.h"
 
-static bool is_online(size_t ind, const void* _topo_info) {
-    struct pal_topo_info* topo_info = (struct pal_topo_info*)_topo_info;
-    return topo_info->numa_nodes[ind].is_online;
+static bool is_online(size_t ind, const void* arg) {
+    __UNUSED(arg);
+    return g_pal_public_state->topo_info.numa_nodes[ind].is_online;
 }
 
 static bool return_true(size_t ind, const void* arg) {
@@ -31,7 +31,7 @@ int sys_node_general_load(struct shim_dentry* dent, char** out_data, size_t* out
     const char* name = dent->name;
     char str[PAL_SYSFS_BUF_FILESZ];
     if (strcmp(name, "online") == 0) {
-        ret = sys_print_as_ranges(str, sizeof(str), topo_info->numa_nodes_cnt, is_online, topo_info);
+        ret = sys_print_as_ranges(str, sizeof(str), topo_info->numa_nodes_cnt, is_online, NULL);
     } else if (strcmp(name, "possible") == 0) {
         ret = sys_print_as_ranges(str, sizeof(str), topo_info->numa_nodes_cnt, return_true, NULL);
     } else {

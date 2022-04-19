@@ -44,7 +44,7 @@ struct pal_cache_info {
 
 struct pal_cpu_thread_info {
     bool is_online;
-    /* Everything below is valid only if the core is online! */
+    /* Everything below is valid only if the thread is online! */
 
     size_t core_id; // containing core; index into pal_topo_info::cores
     size_t caches_ids[MAX_CACHES]; // indices into pal_topo_info::caches, -1 if not present
@@ -100,7 +100,7 @@ struct pal_topo_info {
     size_t numa_nodes_cnt;
     struct pal_numa_node_info* numa_nodes;
 
-    /* Has `numa_nodes_cnt` x `numa_nodes_cnt` elements.
+    /* Has `numa_nodes_cnt * numa_nodes_cnt` elements.
      * numa_distance_matrix[i*numa_nodes_cnt + j] is NUMA distance from node i to node j. */
     size_t* numa_distance_matrix;
 };
