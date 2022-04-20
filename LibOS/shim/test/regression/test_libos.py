@@ -1011,8 +1011,8 @@ class TC_40_FileSystem(RegressionTestCase):
     def test_052_sealed_file_mrenclave_bad(self):
         # Test both old and new implementation
         for pf_path in ['sealed_file_mrenclave.dat', 'encrypted_file_mrenclave.dat']:
-            # Negative test: Seal MRENCLAVE-bound file in one enclave -> opening this file in another
-            # enclave (with different MRENCLAVE) should fail
+            # Negative test: Seal MRENCLAVE-bound file in one enclave -> opening this file in
+            # another enclave (with different MRENCLAVE) should fail
             if os.path.exists(pf_path):
                 os.remove(pf_path)
 
