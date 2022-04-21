@@ -76,7 +76,10 @@ static int read_numbers_from_file(const char* path, size_t* out_arr, size_t coun
         ret = str_to_ulong(buf_it, 10, &val, &end);
         if (ret < 0)
             return -EINVAL;
-        buf_it = end;
+        char expected_separator = (i != count - 1) ? ' ' : '\n';
+        if (*end != expected_separator)
+            return -EINVAL;
+        buf_it = end + 1;
         out_arr[i] = (size_t)val;
     }
     return 0;
@@ -253,8 +256,6 @@ struct set_cache_id_args {
 
 static int set_cache_id(size_t ind, void* _args) {
     struct set_cache_id_args* args = _args;
-    if (!args->threads[ind].is_online)
-        return 0;
     args->threads[ind].caches_ids[args->cache_ind] = args->id_to_set;
     return 0;
 }
