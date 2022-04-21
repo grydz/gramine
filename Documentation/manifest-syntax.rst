@@ -874,6 +874,5 @@ Experimental sysfs topology support
 ::
 
     fs.experimental__enable_sysfs_topology = [true|false]
-    (Default: false)
 
 This feature is now enabled by default and the option was removed.

@@ -16,6 +16,19 @@
 #include "syscall.h"
 #include "topo_info.h"
 
+ssize_t read_file_buffer(const char* filename, char* buf, size_t count) {
+    int fd = DO_SYSCALL(open, filename, O_RDONLY);
+    if (fd < 0)
+        return fd;
+
+    ssize_t ret = DO_SYSCALL(read, fd, buf, count);
+    DO_SYSCALL(close, fd);
+    if (ret < 0)
+        return ret;
+
+    return ret;
+}
+
 /* Opens a pseudo-file describing HW resources and reads the value stored in the file, optionally
  * honoring a 'K' unit suffix. */
 static int get_hw_resource_value(const char* filename, size_t* out_value) {
@@ -26,9 +39,10 @@ static int get_hw_resource_value(const char* filename, size_t* out_value) {
 
     buf[ret] = '\0';
 
-    char* end;
-    long val = strtol(buf, &end, 10);
-    if (val < 0)
+    const char* end;
+    unsigned long val;
+    ret = str_to_ulong(buf, 10, &val, &end);
+    if (ret < 0)
         return -EINVAL;
 
     if (*end != '\n' && *end != '\0' && *end != 'K') {
@@ -54,11 +68,12 @@ static int read_numbers_from_file(const char* path, size_t* out_arr, size_t coun
         return ret;
     buf[ret] = '\0';
 
-    char* buf_it = buf;
-    char* end;
+    const char* buf_it = buf;
+    const char* end;
     for (size_t i = 0; i < count; i++) {
-        long val = strtol(buf_it, &end, 10);
-        if (val < 0 || end == buf_it)
+        unsigned long val;
+        ret = str_to_ulong(buf_it, 10, &val, &end);
+        if (ret < 0)
             return -EINVAL;
         buf_it = end;
         out_arr[i] = (size_t)val;
@@ -75,16 +90,14 @@ static int iterate_ranges_from_file(const char* path, int (*callback)(size_t ind
         return ret;
     buf[ret] = '\0';
 
-    char* buf_it = buf;
+    const char* buf_it = buf;
     long prev = -1;
-    while (*buf_it) {
-        char* parse_end;
-        long val = strtol(buf_it, &parse_end, 10);
-        if (val < 0)
+    while (*buf_it && *buf_it != '\n') {
+        const char* parse_end;
+        unsigned long val;
+        ret = str_to_ulong(buf_it, 10, &val, &parse_end);
+        if (ret < 0)
             return -EINVAL;
-
-        if (parse_end == buf_it)
-            break;
         buf_it = parse_end;
 
         if (*buf_it == ',' || *buf_it == '\n') {
@@ -116,19 +129,6 @@ static int iterate_ranges_from_file(const char* path, int (*callback)(size_t ind
         return -EINVAL;
     }
     return 0;
-}
-
-ssize_t read_file_buffer(const char* filename, char* buf, size_t count) {
-    int fd = DO_SYSCALL(open, filename, O_RDONLY);
-    if (fd < 0)
-        return fd;
-
-    ssize_t ret = DO_SYSCALL(read, fd, buf, count);
-    DO_SYSCALL(close, fd);
-    if (ret < 0)
-        return ret;
-
-    return ret;
 }
 
 static int read_cache_info(struct pal_cache_info* ci, size_t thread_idx, size_t cache_idx) {

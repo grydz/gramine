@@ -43,6 +43,7 @@ struct pal_cache_info {
 };
 
 struct pal_cpu_thread_info {
+    /* Threads are currently numbered same as on host, so we may have "holes" for offline ones. */
     bool is_online;
     /* Everything below is valid only if the thread is online! */
 
@@ -66,17 +67,19 @@ struct pal_socket_info {
 };
 
 struct pal_numa_node_info {
+    /* Nodes are currently numbered same as on host, so we may have "holes" for offline ones. */
     bool is_online;
     /* Everything below is valid only if the node is online! */
 
     size_t nr_hugepages[HUGEPAGES_MAX];
 };
 
-/* The data in this structure are normalized, to ensure that they can be easily verified for
- * consistency when crossing untrusted -> trusted boundary.
- *
- * It's also kept as flat as possible (no nested pointers), to make mishandling it during
- * sanitization harder.
+/* We store the platform topology in a series of flat arrays, and use IDs (array indices) for
+ * relationships between objects, much like in a relational database. This serves two purposes:
+ * - There's no data redundancy, so it's easier to verify the data when crossing untrusted ->
+ *   trusted boundary.
+ * - There are no nested pointers, so it's harder to mishandle the data during importing and
+ *   sanitization. To copy the data, you just need to copy all the arrays.
  *
  * It's supposed to be immutable after initialization, hence no locks are needed (but also no
  * support for hot-plugging CPUs).

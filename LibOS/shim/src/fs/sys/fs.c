@@ -50,15 +50,16 @@ int sys_print_as_ranges(char* buf, size_t buf_size, size_t count,
 int sys_print_as_bitmask(char* buf, size_t buf_size, size_t count,
                          bool (*is_present)(size_t ind, const void* arg),
                          const void* callback_arg) {
+    if (count == 0)
+        return strcpy_static(buf, "0\n", buf_size) ? 0 : -EOVERFLOW;
+
     size_t buf_pos = 0;
     int ret;
-
-    size_t pos = count ? count - 1 : 0;
+    size_t pos = count - 1;
     uint32_t word = 0;
     while (1) {
-        if (pos < count /* handle count == 0 gracefully */
-                && is_present(pos, callback_arg))
-            word |= (1 << pos % 32);
+        if (is_present(pos, callback_arg))
+            word |= 1 << pos % 32;
         if (pos % 32 == 0) {
             if (count <= 32) {
                 /* Linux sysfs quirk: small bitmasks are printed without leading zeroes. */
@@ -83,22 +84,22 @@ int sys_print_as_bitmask(char* buf, size_t buf_size, size_t count,
 }
 
 static int sys_resource_info(const char* parent_name, size_t* out_total, const char** out_prefix) {
-    const struct pal_topo_info* ti = &g_pal_public_state->topo_info;
+    const struct pal_topo_info* topo = &g_pal_public_state->topo_info;
     if (strcmp(parent_name, "node") == 0) {
-        *out_total = ti->numa_nodes_cnt;
+        *out_total = topo->numa_nodes_cnt;
         *out_prefix = "node";
         return 0;
     } else if (strcmp(parent_name, "cpu") == 0) {
-        *out_total = ti->threads_cnt;
+        *out_total = topo->threads_cnt;
         *out_prefix = "cpu";
         return 0;
     } else if (strcmp(parent_name, "cache") == 0) {
         size_t max = 0;
         /* Find the largest cache index used. */
-        for (size_t i = 0; i < ti->threads_cnt; i++) {
-            if (ti->threads[i].is_online) {
+        for (size_t i = 0; i < topo->threads_cnt; i++) {
+            if (topo->threads[i].is_online) {
                 for (size_t j = 0; j < MAX_CACHES; j++) {
-                    if (ti->threads[i].caches_ids[j] != (size_t)-1) {
+                    if (topo->threads[i].caches_ids[j] != (size_t)-1) {
                         max = MAX(max, j + 1); // +1 to convert max index to elements count
                     }
                 }

@@ -25,14 +25,14 @@ static bool return_true(size_t ind, const void* arg) {
 
 int sys_cpu_general_load(struct shim_dentry* dent, char** out_data, size_t* out_size) {
     int ret;
-    const struct pal_topo_info* topo_info = &g_pal_public_state->topo_info;
+    const struct pal_topo_info* topo = &g_pal_public_state->topo_info;
     const char* name = dent->name;
     char str[PAL_SYSFS_BUF_FILESZ];
 
     if (strcmp(name, "online") == 0) {
-        ret = sys_print_as_ranges(str, sizeof(str), topo_info->threads_cnt, is_online, topo_info);
+        ret = sys_print_as_ranges(str, sizeof(str), topo->threads_cnt, is_online, NULL);
     } else if (strcmp(name, "possible") == 0) {
-        ret = sys_print_as_ranges(str, sizeof(str), topo_info->threads_cnt, return_true, NULL);
+        ret = sys_print_as_ranges(str, sizeof(str), topo->threads_cnt, return_true, NULL);
     } else {
         log_debug("unrecognized file: %s", name);
         ret = -ENOENT;
@@ -46,14 +46,15 @@ int sys_cpu_general_load(struct shim_dentry* dent, char** out_data, size_t* out_
 
 static bool is_in_same_core(size_t thread_id, const void* _arg) {
     size_t arg_id = *(const size_t*)_arg;
-    struct pal_cpu_thread_info* ti = &g_pal_public_state->topo_info.threads[thread_id];
-    return ti->is_online && ti->core_id == arg_id;
+    struct pal_cpu_thread_info* thread = &g_pal_public_state->topo_info.threads[thread_id];
+    return thread->is_online && thread->core_id == arg_id;
 }
 
 static bool is_in_same_socket(size_t thread_id, const void* _arg) {
     size_t arg_id = *(const size_t*)_arg;
-    struct pal_cpu_thread_info* ti = &g_pal_public_state->topo_info.threads[thread_id];
-    return ti->is_online && g_pal_public_state->topo_info.cores[ti->core_id].socket_id == arg_id;
+    struct pal_cpu_thread_info* thread = &g_pal_public_state->topo_info.threads[thread_id];
+    return thread->is_online
+        && g_pal_public_state->topo_info.cores[thread->core_id].socket_id == arg_id;
 }
 
 int sys_cpu_load_online(struct shim_dentry* dent, char** out_data, size_t* out_size) {
@@ -70,8 +71,8 @@ int sys_cpu_load_online(struct shim_dentry* dent, char** out_data, size_t* out_s
     if (thread_id == 0)
         return -ENOENT;
 
-    struct pal_cpu_thread_info* thread_info = &g_pal_public_state->topo_info.threads[thread_id];
-    return sys_load(thread_info->is_online ? "1\n" : "0\n", out_data, out_size);
+    struct pal_cpu_thread_info* thread = &g_pal_public_state->topo_info.threads[thread_id];
+    return sys_load(thread->is_online ? "1\n" : "0\n", out_data, out_size);
 }
 
 int sys_cpu_load_topology(struct shim_dentry* dent, char** out_data, size_t* out_size) {
@@ -82,21 +83,21 @@ int sys_cpu_load_topology(struct shim_dentry* dent, char** out_data, size_t* out
         return ret;
 
     const char* name = dent->name;
-    const struct pal_topo_info* topo_info = &g_pal_public_state->topo_info;
-    struct pal_cpu_thread_info* thread_info = &topo_info->threads[thread_id];
-    assert(thread_info->is_online); // `cpuX/topology/` should not exist for offline threads.
-    struct pal_cpu_core_info* core_info = &topo_info->cores[thread_info->core_id];
+    const struct pal_topo_info* topo = &g_pal_public_state->topo_info;
+    struct pal_cpu_thread_info* thread = &topo->threads[thread_id];
+    assert(thread->is_online); // `cpuX/topology/` should not exist for offline threads.
+    struct pal_cpu_core_info* core = &topo->cores[thread->core_id];
     char str[PAL_SYSFS_MAP_FILESZ] = {'\0'};
     if (strcmp(name, "core_id") == 0) {
-        ret = snprintf(str, sizeof(str), "%zu\n", thread_info->core_id);
+        ret = snprintf(str, sizeof(str), "%zu\n", thread->core_id);
     } else if (strcmp(name, "physical_package_id") == 0) {
-        ret = snprintf(str, sizeof(str), "%zu\n", core_info->socket_id);
+        ret = snprintf(str, sizeof(str), "%zu\n", core->socket_id);
     } else if (strcmp(name, "thread_siblings") == 0) {
-        ret = sys_print_as_bitmask(str, sizeof(str), topo_info->threads_cnt, is_in_same_core,
-                                   &thread_info->core_id);
+        ret = sys_print_as_bitmask(str, sizeof(str), topo->threads_cnt, is_in_same_core,
+                                   &thread->core_id);
     } else if (strcmp(name, "core_siblings") == 0) {
-        ret = sys_print_as_bitmask(str, sizeof(str), topo_info->threads_cnt, is_in_same_socket,
-                                   &core_info->socket_id);
+        ret = sys_print_as_bitmask(str, sizeof(str), topo->threads_cnt, is_in_same_socket,
+                                   &core->socket_id);
     } else {
         log_debug("unrecognized file: %s", name);
         ret = -ENOENT;
@@ -129,6 +130,6 @@ bool sys_cpu_exists_only_if_online(struct shim_dentry* parent, const char* name)
     if (ret < 0)
         return false;
 
-    const struct pal_topo_info* topo_info = &g_pal_public_state->topo_info;
-    return topo_info->threads[thread_id].is_online;
+    const struct pal_topo_info* topo = &g_pal_public_state->topo_info;
+    return topo->threads[thread_id].is_online;
 }
