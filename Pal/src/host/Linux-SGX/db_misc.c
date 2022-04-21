@@ -629,7 +629,7 @@ int _DkSetProtectedFilesKey(const char* pf_key_hex) {
 int _DkGetSpecialKey(const char* name, void* key, size_t* key_size) {
     sgx_key_128bit_t sgx_key;
 
-    if (*key_size < sizeof(key))
+    if (*key_size < sizeof(sgx_key))
         return -PAL_ERROR_INVAL;
 
     int ret;

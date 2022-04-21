@@ -386,8 +386,8 @@ int get_or_create_encrypted_files_key(const char* name, struct shim_encrypted_fi
             memcpy(&key->pf_key, &pf_key, sizeof(pf_key));
             key->is_set = true;
         } else if (ret == -PAL_ERROR_NOTIMPLEMENTED) {
-            log_warning("Special key \"%s\" is not supported by current PAL. Mounts using this key "
-                        "will not work.", name);
+            log_debug("Special key \"%s\" is not supported by current PAL. Mounts using this key "
+                      "will not work.", name);
             /* proceed without setting value */
         } else {
             log_debug("DkGetSpecialKey(\"%s\") failed: %d", name, ret);
