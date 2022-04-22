@@ -25,6 +25,8 @@
 #include "shim_utils.h"
 #include "stat.h"
 
+#define USEC_IN_SEC 1000000
+
 /*
  * Always add a read permission to files created on host, because PAL requires opening the file even
  * for operations such as `unlink` or `chmod`.
@@ -122,7 +124,18 @@ static int chroot_setup_dentry(struct shim_dentry* dent, mode_t type, mode_t per
     struct shim_inode* inode = get_new_inode(dent->mount, type, perm);
     if (!inode)
         return -ENOMEM;
+
+    uint64_t time_us;
+    if (DkSystemTimeQuery(&time_us) < 0) {
+        put_inode(inode);
+        return -EPERM;
+    }
+
+    inode->ctime = time_us / USEC_IN_SEC;
+    inode->mtime = inode->ctime;
+    inode->atime = inode->ctime;
     inode->size = size;
+
     dent->inode = inode;
     return 0;
 }
@@ -305,6 +318,10 @@ static ssize_t chroot_write(struct shim_handle* hdl, const void* buf, size_t cou
                             file_off_t* pos) {
     assert(hdl->type == TYPE_CHROOT);
 
+    uint64_t time_us;
+    if (DkSystemTimeQuery(&time_us) < 0)
+        return -EPERM;
+
     size_t actual_count = count;
     int ret = DkStreamWrite(hdl->pal_handle, *pos, &actual_count, (void*)buf, /*dest=*/NULL);
     if (ret < 0) {
@@ -319,6 +336,8 @@ static ssize_t chroot_write(struct shim_handle* hdl, const void* buf, size_t cou
             hdl->inode->size = *pos;
         unlock(&hdl->inode->lock);
     }
+    inode->mtime = time_us / USEC_IN_SEC;
+
     return actual_count;
 }
 
@@ -340,6 +359,10 @@ static int chroot_truncate(struct shim_handle* hdl, file_off_t size) {
 
     int ret;
 
+    uint64_t time_us;
+    if (DkSystemTimeQuery(&time_us) < 0)
+        return -EPERM;
+
     lock(&hdl->inode->lock);
     ret = DkStreamSetLength(hdl->pal_handle, size);
     if (ret == 0) {
@@ -347,6 +370,9 @@ static int chroot_truncate(struct shim_handle* hdl, file_off_t size) {
     } else {
         ret = pal_to_unix_errno(ret);
     }
+
+    hdl->inode->mtime = time_us / USEC_IN_SEC;
+
     unlock(&hdl->inode->lock);
     return ret;
 }
