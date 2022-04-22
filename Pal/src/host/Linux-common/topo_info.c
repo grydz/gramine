@@ -312,11 +312,11 @@ int get_topology_info(struct pal_topo_info* topo_info) {
 
     ret = iterate_ranges_from_file("/sys/devices/system/cpu/online", set_thread_online, threads);
     if (ret < 0)
-        return ret;
+        goto fail;
     ret = iterate_ranges_from_file("/sys/devices/system/node/online", set_numa_node_online,
                                    numa_nodes);
     if (ret < 0)
-        return ret;
+        goto fail;
 
     char path[128];
     for (size_t i = 0; i < threads_cnt; i++) {
