@@ -26,7 +26,6 @@ ssize_t read_file_buffer(const char* filename, char* buf, size_t count) {
     if (ret < 0)
         return ret;
 
-    log_always("XXX [%s] '%.*s'", filename, (int)ret, buf);
     return ret;
 }
 
